@@ -1,0 +1,41 @@
+version: '3.8'
+services:
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - app-network
+
+  gerador:
+    build: ./generator_messages
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
+    volumes:
+      - ./images/faces:/app/images/faces:ro
+      - ./images/objects:/app/images/objects:ro
+
+  consumidor_sentimentos:
+    build: ./consumer_face
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
+    volumes:
+      - ./images/faces:/app/images/faces:ro
+
+  consumidor_objetos:
+    build: ./consumer_objects
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
+    volumes:
+      - ./images/objects:/app/images/objects:ro
+
+networks:
+  app-network:
+    driver: bridge

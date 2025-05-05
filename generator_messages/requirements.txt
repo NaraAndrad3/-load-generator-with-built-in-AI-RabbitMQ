@@ -1,0 +1,5 @@
+# Essa Biblioteca aqui é um tipo de cliente para o RabbitMQ. Ela vai permitir que os nossos conteineres consigam se conectar
+#a um servidor RabbitMQ e enviar mensagens para ele.
+pika 
+
+
