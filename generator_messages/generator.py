@@ -1,14 +1,10 @@
-# generator.py
-
 import pika
 import time
 import random
 import os
 
-
 rabbitmq_host = 'rabbitmq'
 exchange_name = 'mensagens'
-
 
 faces_dir = '/app/images/faces'
 objetos_dir = '/app/images/objects'
@@ -36,20 +32,36 @@ try:
         tipo = random.choice(tipos_mensagens)
         if tipo == 'face':
             if arquivos_faces:
+                nome_arquivo = random.choice(arquivos_faces)
+                caminho_arquivo = os.path.join(faces_dir, nome_arquivo)
                 routing_key = 'face'
-                mensagem = random.choice(arquivos_faces)
-                channel.basic_publish(exchange=exchange_name, routing_key=routing_key, body=mensagem.encode())
-                print(f"Enviada mensagem (face): '{mensagem}'")
+                try:
+                    with open(caminho_arquivo, 'rb') as f:
+                        imagem_binaria = f.read()
+                        channel.basic_publish(exchange=exchange_name, routing_key=routing_key, body=imagem_binaria)
+                        print(f"Enviada imagem (face): '{nome_arquivo}' ({len(imagem_binaria)} bytes)")
+                except FileNotFoundError:
+                    print(f"Erro: Arquivo não encontrado: {caminho_arquivo}")
+                    time.sleep(1)
+                    continue
             else:
-                print(" Sem imagens de rosto disponíveis.")
+                print("Sem imagens de rosto disponíveis.")
                 time.sleep(1)
                 continue
         else:
             if arquivos_objetos:
+                nome_arquivo = random.choice(arquivos_objetos)
+                caminho_arquivo = os.path.join(objetos_dir, nome_arquivo)
                 routing_key = 'objects'
-                mensagem = random.choice(arquivos_objetos)
-                channel.basic_publish(exchange=exchange_name, routing_key=routing_key, body=mensagem.encode())
-                print(f"Enviada mensagem (objects): '{mensagem}'")
+                try:
+                    with open(caminho_arquivo, 'rb') as f:
+                        imagem_binaria = f.read()
+                        channel.basic_publish(exchange=exchange_name, routing_key=routing_key, body=imagem_binaria)
+                        print(f"Enviada imagem (objects): '{nome_arquivo}' ({len(imagem_binaria)} bytes)")
+                except FileNotFoundError:
+                    print(f"Erro: Arquivo não encontrado: {caminho_arquivo}")
+                    time.sleep(1)
+                    continue
             else:
                 print("Sem imagens de time disponíveis.")
                 time.sleep(1)
