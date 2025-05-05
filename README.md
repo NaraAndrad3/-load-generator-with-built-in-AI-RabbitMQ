@@ -1,4 +1,4 @@
-# Projeto de Análise de Imagens com Filas RabbitMQ
+# Projeto de Análise de Imagens com Filas RabbitMQ + IA embutida
 
 Este projeto demonstra uma arquitetura de processamento de imagens utilizando filas de mensagens RabbitMQ para desacoplar as etapas de geração e análise de imagens. O sistema é composto por três serviços principais, orquestrados com Docker Compose:
 
@@ -34,7 +34,6 @@ Este projeto demonstra uma arquitetura de processamento de imagens utilizando fi
 │   └── objects/
 └── docker-compose.yaml
 ```
-
 ## Como Executar o Projeto
 
 1.  **Clone este repositório  ou crie a estrutura de arquivos conforme descrito.** Certifique-se de ter os arquivos e pastas na estrutura correta.
@@ -70,20 +69,49 @@ Este projeto demonstra uma arquitetura de processamento de imagens utilizando fi
 
     Se configurado corretamente (verifique a seção `ports` no `docker-compose.yaml`), você pode acessar a interface web do RabbitMQ Management Plugin através do seu navegador na porta 15672 (geralmente `http://localhost:15672`). As credenciais padrão são `guest/guest`. Nesta interface, você pode monitorar as exchanges (`mensagens`), as filas (`fila_sentimentos`, `fila_objetos`) e as mensagens.
 
+
+    Na interface de gerênciamento, selecione a opção queues para visualizar as filas de imagens.
+
+    ![alt text](<Captura de tela de 2025-05-05 13-14-15.png>)
+
+    Durante a configuração dos consumidores, é preciso configurar a forma de reconhecimento das mensagens. Na imagem abaixo é apresentada a configuração do reconhecimento deste projeto.
+
+    ![alt text](code.png)
+
+    Quando ``auto_ack=False``, isso significa que o consumidor precisa explicitamente enviar um acknowledgment de volta ao RabbitMQ após ter recebido e processado com sucesso uma mensagem, pois o reconhecimento automático está desabilitado.
+
+    Se  ``auto_ack= True``, o RabbitMQ remove a mensagem da fila assim que a entrega ao consumidor, sem esperar por uma confirmação de processamento. Essa configuração é mais rápido, mas menos confiável, pois se o consumidor falhar antes de processar a mensagem, ela seria perdida.
+
+
+    ### Quando ``auto_ack= True`` a fila apresentada na interface apresentará apenas a taxa de entrada de mensagens (ex: 3.0/s) e os demais valores, como ready, Unacked e Total estarão zerados, justamente porque o reconhecimento é automático e à medida que as mensagens são entregues aos consumidores, elas são removidas da fila sem a necessidade de uma resposta.
 ## Como Funciona
 
 1.  O `gerador` escolhe aleatoriamente um arquivo de imagem das pastas `images/faces` ou `images/objects`.
-2.  O nome do arquivo é publicado no exchange `mensagens` do RabbitMQ.
-    * Se a imagem for escolhida da pasta `faces`, a mensagem é roteada com a routing key `face`.
-    * Se a imagem for escolhida da pasta `objects`, a mensagem é roteada com a routing key `objects`.
-3.  O `consumidor_sentimentos` está vinculado à fila `fila_sentimentos` com a routing key `face` e consome as mensagens correspondentes, realizando a análise de sentimentos faciais com `deepface`.
-4.  O `consumidor_objetos` está vinculado à fila `fila_objetos` com a routing key `objects` e consome as mensagens correspondentes, realizando a detecção de objetos com YOLOv8.
-5.  Os resultados das análises são impressos nos logs dos respectivos consumidores.
+2.  O conteúdo binário do arquivo de imagem é publicado no exchange `mensagens` do RabbitMQ.
+    * Se a imagem for escolhida da pasta `faces`, a mensagem (contendo o conteúdo binário da imagem) é roteada com a routing key `face`.
+    * Se a imagem for escolhida da pasta `objects`, a mensagem (contendo o conteúdo binário da imagem) é roteada com a routing key `objects`.
+3.  O `consumidor_sentimentos` está vinculado à fila `fila_sentimentos` com a routing key `face` e consome as mensagens contendo o conteúdo binário da imagem. Ele salva a imagem em um arquivo local e, em seguida, utiliza a biblioteca `deepface` para analisar as emoções faciais.
+4.  O `consumidor_objetos` está vinculado à fila `fila_objetos` com a routing key `objects` e consome as mensagens contendo o conteúdo binário da imagem. Ele salva a imagem em um arquivo local e, em seguida, utiliza o modelo YOLOv8 para detectar objetos.
+5.  Os resultados das análises (emoções detectadas ou objetos identificados) e o caminho do arquivo salvo são impressos nos logs dos respectivos consumidores.
 
 ## Alterando as Imagens
 
 Para adicionar, remover ou modificar as imagens nas pastas `images/faces` e `images/objects`, basta alterar os arquivos nessas pastas no seu sistema de arquivos local.
 
+## 🔧 Tecnologias Utilizadas
+
+    Python 3.10+
+
+    RabbitMQ
+
+    Pika
+
+    DeepFace
+
+    Ultralytics YOLOv8
+
+    Docker + Docker Compose
+
 ## Autores
 
-Nara Raquel Dias Andrade
+Projeto desenvolvido por Nara
