@@ -4,21 +4,24 @@ import pika
 import time
 from ultralytics import YOLO
 import os
+import uuid
 
-
+# Configurações do RabbitMQ
 rabbitmq_host = 'rabbitmq'
 exchange_name = 'mensagens'
-routing_key = 'objects'  
+routing_key = 'objects'
 queue_name = 'fila_objetos'
-image_path = '/app/images/objects'
+image_path = '/app/processed_images/objects' 
 
 # Carregar o modelo YOLO
 model = YOLO('yolov8n.pt')
 names = model.names
 
-def identificar_objeto(img_name):
+
+os.makedirs(image_path, exist_ok=True)
+
+def identificar_objeto(img_path):
     try:
-        img_path = os.path.join(image_path, img_name)
         results = model(img_path, verbose=False)
         detections = []
         for box in results[0].boxes:
@@ -34,11 +37,19 @@ def identificar_objeto(img_name):
         return f"Erro ao identificar objetos: {e}"
 
 def callback(ch, method, properties, body):
-    mensagem = body.decode()
-    print(f"Mensagem (Objetos): {mensagem}")
-    resultado_ia = identificar_objeto(mensagem)
-    print(f" Análise de Objetos da mensagem {mensagem}: {resultado_ia}")
-    time.sleep(1.5) 
+    
+    image_name = f"received_object_{uuid.uuid4().hex}.jpg"
+    file_path = os.path.join(image_path, image_name)
+
+
+    with open(file_path, 'wb') as f:
+        f.write(body)
+    print(f"Imagem de objeto recebida e salva como: {file_path}")
+
+    # Identificar objetos na imagem salva
+    resultado_ia = identificar_objeto(file_path)
+    print(f" Análise de Objetos da imagem {image_name}: {resultado_ia}")
+    time.sleep(1.5)
 
 def connect_rabbitmq():
     while True:
@@ -57,7 +68,7 @@ connection, channel = connect_rabbitmq()
 
 try:
     channel.basic_qos(prefetch_count=1)
-    channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=False)
 
     print(' [*] Aguardando mensagens (Objetos)')
     channel.start_consuming()
